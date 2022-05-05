@@ -17,5 +17,5 @@ feel free to clone this repo and modify it to fit your needs
 
 # links
 
-[github link](https://github.com/SalihuDickson/neu-appImage-bundler)
-[author](https://github.com/SalihuDickson)
+* [github link](https://github.com/SalihuDickson/neu-appImage-bundler)
+* [author](https://github.com/SalihuDickson)
