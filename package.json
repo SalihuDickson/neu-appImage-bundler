@@ -1,0 +1,31 @@
+{
+  "name": "neu-appimage-bundler",
+  "version": "1.1.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "neu-appimage-bundler": "bin/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SalihuDickson/neu-appImage-bundler.git"
+  },
+  "keywords": [],
+  "author": "Salihu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SalihuDickson/neu-appImage-bundler/issues"
+  },
+  "homepage": "https://github.com/SalihuDickson/neu-appImage-bundler#readme",
+  "dependencies": {
+    "chalk": "^5.0.1",
+    "cli-spinner": "^0.2.10",
+    "cli-spinners": "^2.6.1",
+    "decompress": "^4.2.1",
+    "inquirer": "^8.2.4"
+  }
+}
