@@ -30,16 +30,9 @@ spinner.setSpinnerString(18);
 
 const handleAppDirSubdirErr = (err) => {
   if (err) {
-    fs.rmdir(AppDir, (err) => {
-      if (err) {
-        spinner.stop();
-        console.log(`${error} ${err.message}`);
-        console.log(
-          `${warning}: Some items were not deleted, please delete AppDir and all it's subdirectories`
-        );
-        process.exit(1);
-      }
-    });
+    console.log(`${error} err.message`);
+    fs.rmSync(AppDir, { recursive: true, force: true });
+    process.exit(1);
   }
 };
 
