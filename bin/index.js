@@ -27,7 +27,6 @@ if (!configJson) {
 
 const spinner = new Spinner("Creating AppDir");
 spinner.setSpinnerString(18);
-spinner.start();
 
 const handleAppDirSubdirErr = (err) => {
   if (err) {
@@ -45,6 +44,7 @@ const handleAppDirSubdirErr = (err) => {
 };
 
 const createAppDir = () => {
+  spinner.start();
   try {
     fs.mkdirSync(AppDir);
     fs.mkdirSync(path.join(AppDir, "usr"));
@@ -62,8 +62,7 @@ const configureAppDir = async () => {
     path.join(AppDir, "usr", "bin"),
     {
       filter: (file) =>
-        path.extname(file.path) !== ".exe" &&
-        file.path !== `${basename}-mac_x64`,
+        file.path === `${basename}-linux_x64` || file.path === "resources.neu",
     }
   ).catch((err) => handleAppDirSubdirErr(err));
 
@@ -258,8 +257,10 @@ if (fs.existsSync(AppDir)) {
       },
     ])
     .then((answers) => {
-      if (answers.overwrite) createAppDir();
-      else {
+      if (answers.overwrite) {
+        console.log("here");
+        createAppDir();
+      } else {
         console.log("closing...");
         process.exit(1);
       }
