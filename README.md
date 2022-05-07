@@ -6,7 +6,7 @@ npx neu-appimage-bundler
 
 or
 
-npm install -g neu-appimage-bundler
+npm install -g neu-appimage-bundler &&
 neu-appimage-bundler
 
 **NOTE: You must add an icon object where the value is the path of the icon to your neutralinojs.config**
