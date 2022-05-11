@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 import { Spinner } from "cli-spinner";
-import fs from "fs";
+import fs, { stat } from "fs";
 import chalk from "chalk";
 import process from "process";
 import path from "path";
 import decompress from "decompress";
 import inquirer from "inquirer";
+import { DownloaderHelper } from "node-downloader-helper";
 import { execSync, exec, spawn } from "child_process";
 
 const error = chalk.bold.red.bgBlack("ERORR");
 const warning = chalk.bold.yellow("WARNING");
 const stdout = chalk.bgBlack("stdout");
-const stderr = chalk.bgBlack("stderr");
 const basename = path.basename(process.cwd());
 const AppDir = path.join(process.cwd(), `${basename}.AppDir`);
 
@@ -25,12 +25,15 @@ if (!configJson) {
   process.exit(1);
 }
 
+const ARCH = execSync("uname -m");
+
 const spinner = new Spinner("Creating AppDir");
 spinner.setSpinnerString(18);
 
 const handleAppDirSubdirErr = (err) => {
   if (err) {
-    console.log(`${error} err.message`);
+    console.log(`${error} ${err.message}`);
+    console.log("here");
     fs.rmSync(AppDir, { recursive: true, force: true });
     process.exit(1);
   }
@@ -45,11 +48,13 @@ const createAppDir = () => {
     handleAppDirSubdirErr(err);
   }
 
+  spinner.stop(true);
   configureAppDir();
 };
 
 const configureAppDir = async () => {
   spinner.setSpinnerTitle(`extracting ${basename}-release.zip`);
+  spinner.start();
   await decompress(
     path.join(process.cwd(), "dist", `${basename}-release.zip`),
     path.join(AppDir, "usr", "bin"),
@@ -57,25 +62,28 @@ const configureAppDir = async () => {
       filter: (file) =>
         file.path === `${basename}-linux_x64` || file.path === "resources.neu",
     }
-  ).catch((err) => handleAppDirSubdirErr(err));
+  )
+    .catch((err) => handleAppDirSubdirErr(err))
+    .finally(() => spinner.stop(true));
 
   spinner.setSpinnerTitle("configuring AppDir");
-  const { icon } = configJson.default;
+  spinner.start();
 
-  if (icon) {
-    try {
-      const copyIcon = execSync(`cp ${icon} ${AppDir}`);
-      if (copyIcon) {
-        console.log(`${stdout} ${copyIcon.toString("utf8")}`);
-      }
-    } catch (err) {
-      console.log(`${error}: ${err.message}`);
-    }
-  } else {
+  let icon;
+  icon = configJson.default.icon;
+
+  if (!icon) {
+    spinner.stop(true);
     console.log(`${warning} no icon included a default Icon will be used`);
-    process.exit(1);
-  }
+    spinner.start();
 
+    icon = path.join(process.cwd(), "resources", "icons", "appIcon.png");
+  }
+  try {
+    execSync(`cp ${icon} ${AppDir}`);
+  } catch (err) {
+    console.log(`${error}: ${err.message}`);
+  }
   buildDesktopFile(icon);
 };
 
@@ -98,6 +106,7 @@ const buildDesktopFile = (icon) => {
     );
   } catch (err) {
     handleAppDirSubdirErr(err);
+    console.log("here");
   }
 
   try {
@@ -142,10 +151,10 @@ const buildAppRun = () => {
 };
 
 const getLinuxDeploy = () => {
-  const chmodLinuxDeploy = () => {
+  const chmodAppImage = () => {
     try {
       const exeLinuxDeploy = execSync(
-        `chmod +x ${path.join(process.cwd(), "linuxdeploy-x86_64.AppImage")}`
+        `chmod +x ${path.join(process.cwd(), "appimagetool-x86_64.AppImage")}`
       );
       if (exeLinuxDeploy) {
         console.log(`${stdout} ${exeLinuxDeploy.toString("utf8")}`);
@@ -156,82 +165,64 @@ const getLinuxDeploy = () => {
     }
   };
 
-  if (!fs.existsSync(path.join(process.cwd(), "linuxdeploy-x86_64.AppImage"))) {
-    spinner.setSpinnerTitle("Downloading linuxdeploy-x86_64.AppImage");
+  if (
+    !fs.existsSync(path.join(process.cwd(), "appimagetool-x86_64.AppImage"))
+  ) {
+    const dl = new DownloaderHelper(
+      "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage",
+      process.cwd()
+    );
 
-    const child = spawn("wget", [
-      "-nv",
-      "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage",
-    ]);
-
-    child.stderr.on("data", (data) => {
-      if (data.length > 20) console.log(`${stderr} ${data}`);
+    dl.start();
+    dl.on("error", (err) => console.log(`${error}: ${err.message}`));
+    dl.on("progress", ({ progress, speed }) => {
+      spinner.stop(true);
+      spinner.setSpinnerTitle(
+        `Downloading appimagetool-x86_64.AppImage ${progress.toFixed(
+          0
+        )}% | ${speed}b/s`
+      );
+      spinner.start();
     });
-    child.stdout.on("data", (data) => console.log(`${stdout} ${data}`));
-    child.on("error", (err) => {
-      handleAppDirSubdirErr(err);
+    dl.on("end", () => {
+      spinner.stop(true);
+      chmodAppImage();
     });
-    child.on("exit", () => chmodLinuxDeploy());
   } else {
-    chmodLinuxDeploy();
+    chmodAppImage();
   }
 };
 
 const buildAppImage = () => {
-  spinner.setSpinnerTitle("Building AppImage");
+  spinner.setSpinnerTitle("building AppImage");
   spinner.start();
-  const configureAndBuild = (arch) => {
-    try {
-      const setARCH = execSync(`ARCH=${arch}`);
-      if (setARCH) {
-        console.log(`${stdout} ${setARCH.toString("utf8")}`);
-      }
-    } catch (err) {
-      console.log(`${error}: ${err.message}`);
-      process.exit(1);
-    }
 
-    spinner.stop(true);
-    const child = spawn(
-      "./linuxdeploy-x86_64.AppImage",
+  const child = spawn("./appimagetool-x86_64.AppImage", [`${AppDir}`], {
+    env: { ARCH: ARCH },
+  });
 
-      ["--appdir", `${AppDir}`, "--output", "appimage"]
-    );
-
-    child.stderr.on("data", (data) => console.log(`${data}`));
-    child.stdout.on("data", (data) => console.log(`${stdout} ${data}`));
-    child.on("error", (err) => {
-      handleAppDirSubdirErr(err);
-    });
-    child.on("exit", (code) => {
-      deleteResources();
-      if (code === 0) {
-        console.log("Your AppImage has been built sucessfully!! 🚀");
-      }
-      process.exit();
-    });
-  };
-
-  exec("uname -m", (error, stdout, stderr) => {
-    if (error) {
-      console.log(`${error}: ${error.message}`);
-      return;
+  child.on("spawn", () => spinner.stop(true));
+  child.stderr.on("data", (data) => console.log(`${data}`));
+  child.stdout.on("data", (data) => console.log(`${stdout} ${data}`));
+  child.on("error", (err) => {
+    handleAppDirSubdirErr(err);
+  });
+  child.on("exit", (code) => {
+    deleteResources();
+    if (code === 0) {
+      console.log("Your AppImage has been built sucessfully!! 🚀");
+      // console.log(
+      //   `try "chmod +x ${basename}-${ARCH}.AppImage && ./${basename}-${ARCH}.AppImage" to check it out`
+      // );
     }
-    if (stderr) {
-      console.log(`stderr: ${stderr}`);
-      return;
-    }
-    if (stdout) {
-      const arch = stdout;
-      configureAndBuild(arch);
-    }
+    process.exit();
   });
 };
 
 const deleteResources = () => {
   const deleteArr = [
     AppDir,
-    path.join(process.cwd(), "linuxdeploy-x86_64.AppImage"),
+    path.join(process.cwd(), "appimagetool-x86_64.AppImage"),
   ];
 
   deleteArr.forEach((item) =>
@@ -251,7 +242,7 @@ if (fs.existsSync(AppDir)) {
     ])
     .then((answers) => {
       if (answers.overwrite) {
-        console.log("here");
+        fs.rmSync(AppDir, { recursive: true, force: true });
         createAppDir();
       } else {
         console.log("closing...");
