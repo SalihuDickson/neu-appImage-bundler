@@ -135,7 +135,7 @@ const buildAppRun = () => {
       path.join(AppDir, "AppRun"),
       `#!/bin/sh ${Object.keys(AppRun)
         .map((key) => "\n" + key + "=" + AppRun[key])
-        .join("")} exec "${Exec}"`
+        .join("")} \nexec "${Exec}"`
     );
   } catch (err) {
     handleAppDirSubdirErr(err);
@@ -174,7 +174,9 @@ const getLinuxDeploy = () => {
     );
 
     dl.start();
-    dl.on("error", (err) => console.log(`${error}: ${err.message}`));
+    dl.on("error", (err) => {
+      handleAppDirSubdirErr(err);
+    });
     dl.on("progress", ({ progress, speed }) => {
       spinner.stop(true);
       spinner.setSpinnerTitle(
