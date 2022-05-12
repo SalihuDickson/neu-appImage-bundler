@@ -14,14 +14,17 @@ const warning = chalk.bold.yellow("WARNING");
 const stdout = chalk.bgBlack("stdout");
 const basename = path.basename(process.cwd());
 const AppDir = path.join(process.cwd(), `${basename}.AppDir`);
+let configJson;
 
-const configPath = path.join(process.cwd(), "neutralino.config.json");
-const configJson = await import(configPath, {
-  assert: { type: "json" },
-});
-
-if (!configJson) {
-  console.log(`${error}: This is not a neutralino app`);
+try {
+  const configPath = path.join(process.cwd(), "neutralino.config.json");
+  configJson = await import(configPath, {
+    assert: { type: "json" },
+  });
+} catch (err) {
+  console.log(
+    `${error}: Cannot import "neutralino.config.json", "neu-appimage-bundler" only works in neutralinoJs apps`
+  );
   process.exit(1);
 }
 
